@@ -1,5 +1,6 @@
 package com.renzo.todo_api.task.mappers;
 
+import com.renzo.todo_api.task.dto.TaskRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.models.Task;
 import org.springframework.stereotype.Component;
@@ -19,5 +20,17 @@ public class TaskMapper {
                 entity.getCreatedAt(),
                 entity.getUpdatedAt()
         );
+    }
+
+    public Task toEntity(TaskRequest response) {
+        if (response == null) return null;
+
+        return Task.builder()
+                .title(response.title())
+                .description(response.description())
+                .completed(false)
+                .priority(response.priority())
+                .dueDate(response.dueDate())
+                .build();
     }
 }

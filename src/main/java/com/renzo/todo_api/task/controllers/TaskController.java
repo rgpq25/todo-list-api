@@ -1,10 +1,12 @@
 package com.renzo.todo_api.task.controllers;
 
+import com.renzo.todo_api.task.dto.TaskRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.services.TaskService;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
@@ -18,7 +20,14 @@ public class TaskController {
     }
 
     @GetMapping("")
-    public List<TaskResponse> getAllTasks() {
-        return taskService.findAll();
+    public ResponseEntity<List<TaskResponse>> getAllTasks() {
+        List<TaskResponse> tasks = taskService.findAll();
+        return ResponseEntity.status(HttpStatus.OK).body(tasks);
+    }
+
+    @PostMapping("")
+    public ResponseEntity<TaskResponse> createTask(@Valid @RequestBody TaskRequest task) {
+        TaskResponse createdTask = taskService.createTask(task);
+        return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
     }
 }

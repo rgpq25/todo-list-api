@@ -3,6 +3,7 @@ package com.renzo.todo_api.task.models;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -13,13 +14,6 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "tasks")
 public class Task {
-
-    public enum Priority {
-        LOW,
-        MEDIUM,
-        HIGH
-    }
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -35,14 +29,24 @@ public class Task {
 
     @Column(nullable = true)
     @Enumerated(EnumType.STRING)
-    private Priority priority;
+    private TaskPriority priority;
 
     @Column(nullable = true)
-    private LocalDateTime dueDate;
+    private LocalDate dueDate;
 
-    @Column(insertable = false, updatable = false)
-    private LocalDateTime createdAt = LocalDateTime.now();
+    @Column(nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
-    @Column(insertable = false, updatable = true)
+    @Column(nullable = true, insertable = false, updatable = true)
     private LocalDateTime updatedAt = null;
+
+    @PrePersist
+    void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
+
+    @PreUpdate
+    void onUpdate() {
+        updatedAt = LocalDateTime.now();
+    }
 }
