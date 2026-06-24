@@ -1,6 +1,7 @@
 package com.renzo.todo_api.task;
 
 import com.renzo.todo_api.task.models.Task;
+import com.renzo.todo_api.task.models.TaskPriority;
 import com.renzo.todo_api.task.repositories.TaskRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,9 +14,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -46,7 +45,7 @@ class TaskApiIT {
                 .title("First task")
                 .description("First description")
                 .completed(false)
-                .priority(Task.Priority.LOW)
+                .priority(TaskPriority.LOW)
                 .build());
 
         mockMvc.perform(get("/api/tasks"))

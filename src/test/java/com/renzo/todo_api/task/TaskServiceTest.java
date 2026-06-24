@@ -3,6 +3,7 @@ package com.renzo.todo_api.task;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.mappers.TaskMapper;
 import com.renzo.todo_api.task.models.Task;
+import com.renzo.todo_api.task.models.TaskPriority;
 import com.renzo.todo_api.task.repositories.TaskRepository;
 import com.renzo.todo_api.task.services.TaskService;
 import org.junit.jupiter.api.Test;
@@ -44,14 +45,14 @@ public class TaskServiceTest {
                 .title("First task")
                 .description("First description")
                 .completed(false)
-                .priority(Task.Priority.LOW)
+                .priority(TaskPriority.LOW)
                 .build();
         Task task2 = Task.builder()
                 .id(2L)
                 .title("Second task")
                 .description("Second description")
                 .completed(true)
-                .priority(Task.Priority.MEDIUM)
+                .priority(TaskPriority.MEDIUM)
                 .build();
 
         TaskResponse response1 = new TaskResponse(
