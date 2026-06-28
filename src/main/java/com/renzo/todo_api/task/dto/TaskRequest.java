@@ -10,7 +10,7 @@ import java.time.LocalDate;
 public record TaskRequest(
         @NotNull(message = "The title must be supplied.")
         @NotBlank(message = "The title must not be empty.")
-        @Size(max = 50, message = "The title must have at most 100 characters.")
+        @Size(max = 50, message = "The title must have at most 50 characters.")
         String title,
 
         @Size(max = 1000, message = "The description must have at most 1000 characters.")
