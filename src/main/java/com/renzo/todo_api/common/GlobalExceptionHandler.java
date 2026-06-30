@@ -1,5 +1,6 @@
 package com.renzo.todo_api.common;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -10,10 +11,13 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import java.util.List;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException e) {
+        log.error(e.getMessage(), e);
+        
         List<FieldErrorResponse> errors = e.getBindingResult().getFieldErrors()
                 .stream()
                 .map(error -> new FieldErrorResponse(
@@ -35,6 +39,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadableMessage(HttpMessageNotReadableException e) {
+        log.error(e.getMessage(), e);
+
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .title("Invalid request body")
                 .detail("Request body is malformed or contains unreadable values.")
@@ -46,6 +52,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleExceptions(Exception e) {
+        log.error(e.getMessage(), e);
+
         ErrorResponse errorResponse = ErrorResponse.builder()
                 .title("Internal server error")
                 .detail("An unexpected error occurred.")
