@@ -19,17 +19,12 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.hamcrest.Matchers.hasItem;
-import static org.hamcrest.Matchers.hasSize;
-import static org.hamcrest.Matchers.notNullValue;
-import static org.hamcrest.Matchers.nullValue;
+import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(TaskController.class)
 class TaskControllerTest {
@@ -40,10 +35,10 @@ class TaskControllerTest {
     private TaskService taskService;
 
     @Nested
-    class GetAllTasksTests {
+    class GetTasksWithFiltersTests {
         @Test
-        void getAllTasksReturnsTasksFromService() throws Exception {
-            when(taskService.findAll()).thenReturn(List.of(
+        void getTasksWithFilters_NoParams_ReturnsTasks() throws Exception {
+            when(taskService.getAllWithFilters(null, null, null, null)).thenReturn(List.of(
                     new TaskResponse(
                             1L,
                             "First task",
@@ -77,14 +72,71 @@ class TaskControllerTest {
                     .andExpect(jsonPath("$[1].priority").value("HIGH"))
                     .andExpect(jsonPath("$[1].dueDate").value("2026-07-01"));
 
-            verify(taskService).findAll();
+            verify(taskService).getAllWithFilters(null, null, null, null);
+        }
+
+        @Test
+        void getTasksWithFilters_AllParams_ReturnsTasks() throws Exception {
+            when(taskService.getAllWithFilters(
+                    false,
+                    TaskPriority.HIGH,
+                    LocalDate.of(2026, 7, 2),
+                    LocalDate.of(2026, 6, 1)
+            )).thenReturn(List.of(
+                    new TaskResponse(
+                            1L,
+                            "First task",
+                            "First description",
+                            false,
+                            TaskPriority.HIGH,
+                            LocalDate.of(2026, 6, 25),
+                            LocalDateTime.of(2026, 6, 27, 10, 0),
+                            null
+                    ),
+                    new TaskResponse(
+                            2L,
+                            "Second task",
+                            "Second description",
+                            false,
+                            TaskPriority.HIGH,
+                            LocalDate.of(2026, 7, 1),
+                            LocalDateTime.of(2026, 6, 27, 11, 0),
+                            null
+                    )
+            ));
+
+            mockMvc.perform(get("/api/tasks")
+                            .param("completed", "false")
+                            .param("priority", "HIGH")
+                            .param("dueBefore", "2026-07-02")
+                            .param("dueAfter", "2026-06-01"))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    .andExpect(jsonPath("$[0].id").value(1))
+                    .andExpect(jsonPath("$[0].title").value("First task"))
+                    .andExpect(jsonPath("$[0].completed").value(false))
+                    .andExpect(jsonPath("$[0].priority").value("HIGH"))
+                    .andExpect(jsonPath("$[0].dueDate").value("2026-06-25"))
+                    .andExpect(jsonPath("$[1].id").value(2))
+                    .andExpect(jsonPath("$[1].title").value("Second task"))
+                    .andExpect(jsonPath("$[1].completed").value(false))
+                    .andExpect(jsonPath("$[1].priority").value("HIGH"))
+                    .andExpect(jsonPath("$[1].dueDate").value("2026-07-01"));
+
+            verify(taskService).getAllWithFilters(
+                    false,
+                    TaskPriority.HIGH,
+                    LocalDate.of(2026, 7, 2),
+                    LocalDate.of(2026, 6, 1)
+            );
         }
     }
 
     @Nested
     class CreateTaskTests {
         @Test
-        void createTaskReturnsCreatedTaskAndDelegatesRequest() throws Exception {
+        void createTask_AllFields_ReturnsCreatedTask() throws Exception {
             when(taskService.createTask(any(TaskRequest.class))).thenReturn(new TaskResponse(
                     1L,
                     "Buy milk",
@@ -129,7 +181,7 @@ class TaskControllerTest {
         }
 
         @Test
-        void createTaskReturns400WhenTitleIsBlankAndDoesNotCallService() throws Exception {
+        void createTask_TitleIsBlank_Returns400() throws Exception {
             mockMvc.perform(post("/api/tasks")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
@@ -148,7 +200,7 @@ class TaskControllerTest {
         }
 
         @Test
-        void createTaskReturns400WhenTitleIsNullAndDoesNotCallService() throws Exception {
+        void createTask_TitleIsNull_Returns400() throws Exception {
             mockMvc.perform(post("/api/tasks")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
@@ -166,7 +218,7 @@ class TaskControllerTest {
         }
 
         @Test
-        void createTaskReturns400WhenTitleIsTooLongAndDoesNotCallService() throws Exception {
+        void createTask_TitleIsTooLong_Returns400() throws Exception {
             String title = "a".repeat(51);
 
             mockMvc.perform(post("/api/tasks")
@@ -187,7 +239,7 @@ class TaskControllerTest {
         }
 
         @Test
-        void createTaskReturns400WhenPriorityIsInvalidAndDoesNotCallService() throws Exception {
+        void createTask_PriorityIsInvalid_Returns400() throws Exception {
             mockMvc.perform(post("/api/tasks")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
@@ -209,8 +261,8 @@ class TaskControllerTest {
     @Nested
     class ErrorHandlingTests {
         @Test
-        void getAllTasksReturns500WhenServiceThrows() throws Exception {
-            when(taskService.findAll()).thenThrow(new RuntimeException("boom"));
+        void getTasksWithFilters_ServiceThrows_Returns500() throws Exception {
+            when(taskService.getAllWithFilters(null, null, null, null)).thenThrow(new RuntimeException("boom"));
 
             mockMvc.perform(get("/api/tasks"))
                     .andExpect(status().isInternalServerError())
@@ -219,11 +271,11 @@ class TaskControllerTest {
                     .andExpect(jsonPath("$.detail").value("An unexpected error occurred."))
                     .andExpect(jsonPath("$.errors", hasSize(0)));
 
-            verify(taskService).findAll();
+            verify(taskService).getAllWithFilters(null, null, null, null);
         }
 
         @Test
-        void createTaskReturns500WhenServiceThrows() throws Exception {
+        void createTask_ServiceThrows_Returns500() throws Exception {
             when(taskService.createTask(any(TaskRequest.class))).thenThrow(new RuntimeException("boom"));
 
             mockMvc.perform(post("/api/tasks")

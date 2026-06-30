@@ -2,16 +2,20 @@ package com.renzo.todo_api.task.controllers;
 
 import com.renzo.todo_api.task.dto.TaskRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
+import com.renzo.todo_api.task.models.TaskPriority;
 import com.renzo.todo_api.task.services.TaskService;
 import jakarta.validation.Valid;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
 import java.util.List;
 
 @RestController
 @RequestMapping("/api/tasks")
+@Slf4j
 public class TaskController {
     private final TaskService taskService;
 
@@ -20,8 +24,14 @@ public class TaskController {
     }
 
     @GetMapping("")
-    public ResponseEntity<List<TaskResponse>> getAllTasks() {
-        List<TaskResponse> tasks = taskService.findAll();
+    public ResponseEntity<List<TaskResponse>> getTasksWithFilters(
+            @RequestParam(required = false) Boolean completed,
+            @RequestParam(required = false) TaskPriority priority,
+            @RequestParam(required = false) LocalDate dueBefore,
+            @RequestParam(required = false) LocalDate dueAfter
+    ) {
+        log.info("getAllTasks called");
+        List<TaskResponse> tasks = taskService.getAllWithFilters(completed, priority, dueBefore, dueAfter);
         return ResponseEntity.status(HttpStatus.OK).body(tasks);
     }
 

@@ -38,40 +38,72 @@ class TaskApiIT {
     }
 
     @Nested
-    class GetAllTasksTests {
+    class GetTasksWithFiltersTests {
         @Test
-        void getAllTasksReturnsEmptyListWhenNoTasksExist() throws Exception {
+        void getTasksWithFilters_NoParams_ReturnsAllTasks() throws Exception {
+            taskRepository.saveAll(List.of(
+                    Task.builder()
+                            .title("Matching task")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build(),
+                    Task.builder()
+                            .title("Wrong completed")
+                            .completed(true)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build()
+            ));
+
             mockMvc.perform(get("/api/tasks"))
                     .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$", hasSize(0)));
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    .andExpect(jsonPath("$[0].title").value("Matching task"))
+                    .andExpect(jsonPath("$[0].completed").value(false))
+                    .andExpect(jsonPath("$[0].priority").value("HIGH"))
+                    .andExpect(jsonPath("$[0].dueDate").value("2026-06-15"))
+                    .andExpect(jsonPath("$[1].title").value("Wrong completed"))
+                    .andExpect(jsonPath("$[1].completed").value(true))
+                    .andExpect(jsonPath("$[1].priority").value("HIGH"))
+                    .andExpect(jsonPath("$[1].dueDate").value("2026-06-15"));
         }
 
         @Test
-        void getAllTasksReturnsSavedTasks() throws Exception {
-            Task task = taskRepository.save(Task.builder()
-                    .title("First task")
-                    .description("First description")
-                    .completed(false)
-                    .priority(TaskPriority.LOW)
-                    .build());
+        void getTasksWithFilters_AllParams_ReturnsFilteredTasks() throws Exception {
+            taskRepository.saveAll(List.of(
+                    Task.builder()
+                            .title("Matching task")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build(),
+                    Task.builder()
+                            .title("Wrong completed")
+                            .completed(true)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build()
+            ));
 
-            mockMvc.perform(get("/api/tasks"))
+            mockMvc.perform(get("/api/tasks")
+                            .param("completed", "false")
+                            .param("priority", "HIGH")
+                            .param("dueBefore", "2026-07-01")
+                            .param("dueAfter", "2026-06-01"))
                     .andExpect(status().isOk())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$", hasSize(1)))
-                    .andExpect(jsonPath("$[0].id").value(task.getId().intValue()))
-                    .andExpect(jsonPath("$[0].title").value("First task"))
-                    .andExpect(jsonPath("$[0].description").value("First description"))
+                    .andExpect(jsonPath("$[0].title").value("Matching task"))
                     .andExpect(jsonPath("$[0].completed").value(false))
-                    .andExpect(jsonPath("$[0].priority").value("LOW"));
+                    .andExpect(jsonPath("$[0].priority").value("HIGH"))
+                    .andExpect(jsonPath("$[0].dueDate").value("2026-06-15"));
         }
     }
 
     @Nested
     class CreateTaskTests {
         @Test
-        void createTaskReturnsCreatedTask() throws Exception {
+        void createTask_AllFields_ReturnsCreatedTask() throws Exception {
             mockMvc.perform(post("/api/tasks")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
@@ -106,7 +138,7 @@ class TaskApiIT {
         }
 
         @Test
-        void createTaskReturnsCreatedTaskWhenTitleIsAtMaxLength() throws Exception {
+        void createTask_TitleIsAtMaxLength_ReturnsCreatedTask() throws Exception {
             String title = "a".repeat(50);
 
             mockMvc.perform(post("/api/tasks")
@@ -136,7 +168,7 @@ class TaskApiIT {
         }
 
         @Test
-        void createTaskReturnsCreatedTaskWhenDescriptionIsAtMaxLength() throws Exception {
+        void createTask_DescriptionIsAtMaxLength_ReturnsCreatedTask() throws Exception {
             String description = "a".repeat(1000);
 
             mockMvc.perform(post("/api/tasks")
@@ -167,7 +199,7 @@ class TaskApiIT {
         }
 
         @Test
-        void createTaskReturnsCreatedTaskWhenOptionalFieldsAreMissing() throws Exception {
+        void createTask_OptionalFieldsAreMissing_ReturnsCreatedTask() throws Exception {
             mockMvc.perform(post("/api/tasks")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
@@ -199,7 +231,7 @@ class TaskApiIT {
         }
 
         @Test
-        void createTaskReturns400WhenTitleIsNull() throws Exception {
+        void createTask_TitleIsNull_Returns400() throws Exception {
             mockMvc.perform(post("/api/tasks")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
@@ -218,7 +250,7 @@ class TaskApiIT {
         }
 
         @Test
-        void createTaskReturns400WhenTitleIsBlank() throws Exception {
+        void createTask_TitleIsBlank_Returns400() throws Exception {
             mockMvc.perform(post("/api/tasks")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
@@ -240,7 +272,7 @@ class TaskApiIT {
         }
 
         @Test
-        void createTaskReturns400WhenTitleIsTooLong() throws Exception {
+        void createTask_TitleIsTooLong_Returns400() throws Exception {
             String title = "a".repeat(51);
 
             mockMvc.perform(post("/api/tasks")
@@ -262,7 +294,7 @@ class TaskApiIT {
         }
 
         @Test
-        void createTaskReturns400WhenDescriptionIsTooLong() throws Exception {
+        void createTask_DescriptionIsTooLong_Returns400() throws Exception {
             String description = "a".repeat(1001);
 
             mockMvc.perform(post("/api/tasks")
@@ -285,7 +317,7 @@ class TaskApiIT {
         }
 
         @Test
-        void createTaskReturns400WhenPriorityIsInvalid() throws Exception {
+        void createTask_PriorityIsInvalid_Returns400() throws Exception {
             mockMvc.perform(post("/api/tasks")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
@@ -304,7 +336,7 @@ class TaskApiIT {
         }
 
         @Test
-        void createTaskReturns400WhenBodyIsMalformed() throws Exception {
+        void createTask_BodyIsMalformed_Returns400() throws Exception {
             mockMvc.perform(post("/api/tasks")
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""

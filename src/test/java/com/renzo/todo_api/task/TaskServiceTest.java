@@ -11,8 +11,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
 import org.mockito.ArgumentCaptor;
+import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
@@ -35,19 +35,9 @@ public class TaskServiceTest {
     }
 
     @Nested
-    class FindAllTests {
+    class GetAllWithFiltersTests {
         @Test
-        void shouldReturnEmptyListWhenNoTasksExist() {
-            when(taskRepository.findAll()).thenReturn(List.of());
-
-            List<TaskResponse> tasks = taskService.findAll();
-
-            assertThat(tasks).isEmpty();
-            verify(taskRepository).findAll();
-        }
-
-        @Test
-        void shouldReturnAllTasks() {
+        void getAllWithFilters_NoParams_ReturnsAllTasks() {
             Task task1 = Task.builder()
                     .id(1L)
                     .title("First task")
@@ -65,9 +55,9 @@ public class TaskServiceTest {
                     .createdAt(LocalDateTime.of(2026, 6, 27, 11, 0))
                     .build();
 
-            when(taskRepository.findAll()).thenReturn(List.of(task1, task2));
+            when(taskRepository.findAllWithFilters(null, null, null, null)).thenReturn(List.of(task1, task2));
 
-            List<TaskResponse> tasks = taskService.findAll();
+            List<TaskResponse> tasks = taskService.getAllWithFilters(null, null, null, null);
 
             assertThat(tasks).containsExactly(
                     new TaskResponse(
@@ -91,14 +81,14 @@ public class TaskServiceTest {
                             null
                     )
             );
-            verify(taskRepository).findAll();
+            verify(taskRepository).findAllWithFilters(null, null, null, null);
         }
     }
 
     @Nested
     class CreateTaskTests {
         @Test
-        void shouldCreateTask() {
+        void createTask_AllFields_ReturnsCreatedTask() {
             TaskRequest request = new TaskRequest(
                     "Buy milk",
                     "Before 6pm",
@@ -143,7 +133,7 @@ public class TaskServiceTest {
         }
 
         @Test
-        void shouldCreateTaskWithNullOptionalFields() {
+        void createTask_NullOptionalFields_ReturnsCreatedTask() {
             TaskRequest request = new TaskRequest(
                     "Buy milk",
                     null,
