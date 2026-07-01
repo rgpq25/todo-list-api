@@ -10,6 +10,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class TaskService {
@@ -29,6 +30,11 @@ public class TaskService {
     ) {
         List<Task> tasks = taskRepository.findAllWithFilters(completed, priority, dueBefore, dueAfter);
         return tasks.stream().map(taskMapper::toResponse).toList();
+    }
+
+    public Optional<TaskResponse> getTaskById(Long id) {
+        Optional<Task> task = taskRepository.findById(id);
+        return task.map(taskMapper::toResponse);
     }
 
     public TaskResponse createTask(TaskRequest taskDto) {

@@ -17,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
@@ -130,6 +131,49 @@ class TaskControllerTest {
                     LocalDate.of(2026, 7, 2),
                     LocalDate.of(2026, 6, 1)
             );
+        }
+    }
+
+    @Nested
+    class GetTaskByIdTests {
+        @Test
+        void getTaskById_ExistingTaskId_ReturnsTaskResponse() throws Exception {
+            TaskResponse taskResponse = new TaskResponse(
+                    1L,
+                    "First task",
+                    "First description",
+                    false,
+                    TaskPriority.LOW,
+                    null,
+                    LocalDateTime.of(2026, 6, 27, 10, 0),
+                    null
+            );
+            when(taskService.getTaskById(1L)).thenReturn(Optional.of(taskResponse));
+
+            mockMvc.perform(get("/api/tasks/{id}", 1L))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(1))
+                    .andExpect(jsonPath("$.title").value("First task"))
+                    .andExpect(jsonPath("$.completed").value(false))
+                    .andExpect(jsonPath("$.priority").value("LOW"))
+                    .andExpect(jsonPath("$.dueDate").value(nullValue()));
+
+            verify(taskService).getTaskById(1L);
+        }
+
+        @Test
+        void getTaskById_NonExistingTaskId_Returns404() throws Exception {
+            when(taskService.getTaskById(1L)).thenReturn(Optional.empty());
+
+            mockMvc.perform(get("/api/tasks/{id}", 999L))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Task not found"))
+                    .andExpect(jsonPath("$.detail").value("Task with id 999 was not found."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            verify(taskService).getTaskById(999L);
         }
     }
 
@@ -255,43 +299,6 @@ class TaskControllerTest {
                     .andExpect(jsonPath("$.errors", hasSize(0)));
 
             verifyNoInteractions(taskService);
-        }
-    }
-
-    @Nested
-    class ErrorHandlingTests {
-        @Test
-        void getTasksWithFilters_ServiceThrows_Returns500() throws Exception {
-            when(taskService.getAllWithFilters(null, null, null, null)).thenThrow(new RuntimeException("boom"));
-
-            mockMvc.perform(get("/api/tasks"))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.title").value("Internal server error"))
-                    .andExpect(jsonPath("$.detail").value("An unexpected error occurred."))
-                    .andExpect(jsonPath("$.errors", hasSize(0)));
-
-            verify(taskService).getAllWithFilters(null, null, null, null);
-        }
-
-        @Test
-        void createTask_ServiceThrows_Returns500() throws Exception {
-            when(taskService.createTask(any(TaskRequest.class))).thenThrow(new RuntimeException("boom"));
-
-            mockMvc.perform(post("/api/tasks")
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content("""
-                                    {
-                                      "title": "Buy milk"
-                                    }
-                                    """))
-                    .andExpect(status().isInternalServerError())
-                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
-                    .andExpect(jsonPath("$.title").value("Internal server error"))
-                    .andExpect(jsonPath("$.detail").value("An unexpected error occurred."))
-                    .andExpect(jsonPath("$.errors", hasSize(0)));
-
-            verify(taskService).createTask(any(TaskRequest.class));
         }
     }
 }

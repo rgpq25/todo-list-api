@@ -2,6 +2,7 @@ package com.renzo.todo_api.task.controllers;
 
 import com.renzo.todo_api.task.dto.TaskRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
+import com.renzo.todo_api.task.exceptions.TaskNotFound;
 import com.renzo.todo_api.task.models.TaskPriority;
 import com.renzo.todo_api.task.services.TaskService;
 import jakarta.validation.Valid;
@@ -30,6 +31,12 @@ public class TaskController {
     ) {
         List<TaskResponse> tasks = taskService.getAllWithFilters(completed, priority, dueBefore, dueAfter);
         return ResponseEntity.status(HttpStatus.OK).body(tasks);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<TaskResponse> getTaskById(@PathVariable Long id) {
+        TaskResponse task = taskService.getTaskById(id).orElseThrow(() -> new TaskNotFound(id));
+        return ResponseEntity.status(HttpStatus.OK).body(task);
     }
 
 

@@ -1,5 +1,6 @@
 package com.renzo.todo_api.common;
 
+import com.renzo.todo_api.common.exceptions.NotFoundException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -17,7 +18,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException e) {
         log.error(e.getMessage(), e);
-        
+
         List<FieldErrorResponse> errors = e.getBindingResult().getFieldErrors()
                 .stream()
                 .map(error -> new FieldErrorResponse(
@@ -48,6 +49,19 @@ public class GlobalExceptionHandler {
                 .build();
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(NotFoundException.class)
+    public ResponseEntity<ErrorResponse> handleNotFoundException(NotFoundException e) {
+        log.error(e.getMessage(), e);
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .title(e.getResourceName() + " not found")
+                .detail(e.getMessage())
+                .errors(List.of())
+                .build();
+        
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
 
     @ExceptionHandler(Exception.class)

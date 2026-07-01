@@ -101,6 +101,44 @@ class TaskApiIT {
     }
 
     @Nested
+    class GetTaskByIdTests {
+        @Test
+        void getTaskById_ExistingTaskId_ReturnsTask() throws Exception {
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.LOW)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+
+            mockMvc.perform(get("/api/tasks/{id}", savedTask.getId()))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(savedTask.getId()))
+                    .andExpect(jsonPath("$.title").value("Read docs"))
+                    .andExpect(jsonPath("$.description").value("Spring MVC testing"))
+                    .andExpect(jsonPath("$.completed").value(false))
+                    .andExpect(jsonPath("$.priority").value("LOW"))
+                    .andExpect(jsonPath("$.dueDate").value("2026-07-10"))
+                    .andExpect(jsonPath("$.createdAt").value(notNullValue()))
+                    .andExpect(jsonPath("$.updatedAt").value(nullValue()));
+        }
+
+        @Test
+        void getTaskById_NonExistingTaskId_Returns404() throws Exception {
+            Long missingId = 999999L;
+
+            mockMvc.perform(get("/api/tasks/{id}", missingId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Task not found"))
+                    .andExpect(jsonPath("$.detail").value("Task with id 999999 was not found."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+        }
+    }
+
+    @Nested
     class CreateTaskTests {
         @Test
         void createTask_AllFields_ReturnsCreatedTask() throws Exception {

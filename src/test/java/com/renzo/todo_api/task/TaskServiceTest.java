@@ -18,6 +18,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.*;
@@ -82,6 +83,49 @@ public class TaskServiceTest {
                     )
             );
             verify(taskRepository).findAllWithFilters(null, null, null, null);
+        }
+    }
+
+    @Nested
+    class GetTaskByIdTests {
+        @Test
+        void getTaskById_ExistingTaskId_ReturnsTaskResponse() {
+            Task task = Task.builder()
+                    .id(1L)
+                    .title("First task")
+                    .description("First description")
+                    .completed(false)
+                    .priority(TaskPriority.LOW)
+                    .createdAt(LocalDateTime.of(2026, 6, 27, 10, 0))
+                    .build();
+            when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+            Optional<TaskResponse> taskResponse = taskService.getTaskById(1L);
+
+            verify(taskRepository).findById(1L);
+
+            assertThat(taskResponse).isPresent();
+            assertThat(taskResponse).contains(new TaskResponse(
+                    1L,
+                    "First task",
+                    "First description",
+                    false,
+                    TaskPriority.LOW,
+                    null,
+                    LocalDateTime.of(2026, 6, 27, 10, 0),
+                    null
+            ));
+        }
+
+        @Test
+        void getTaskById_NonExistingTaskId_ReturnsEmptyOptional() {
+            when(taskRepository.findById(1L)).thenReturn(Optional.empty());
+
+            Optional<TaskResponse> taskResponse = taskService.getTaskById(1L);
+
+            verify(taskRepository).findById(1L);
+
+            assertThat(taskResponse).isEmpty();
         }
     }
 
