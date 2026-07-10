@@ -2,6 +2,7 @@ package com.renzo.todo_api.task.controllers;
 
 import com.renzo.todo_api.task.dto.TaskRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
+import com.renzo.todo_api.task.dto.TaskUpdateRequest;
 import com.renzo.todo_api.task.exceptions.TaskNotFound;
 import com.renzo.todo_api.task.models.TaskPriority;
 import com.renzo.todo_api.task.services.TaskService;
@@ -39,10 +40,15 @@ public class TaskController {
         return ResponseEntity.status(HttpStatus.OK).body(task);
     }
 
-
     @PostMapping("")
     public ResponseEntity<TaskResponse> createTask(@Valid @RequestBody TaskRequest task) {
         TaskResponse createdTask = taskService.createTask(task);
         return ResponseEntity.status(HttpStatus.CREATED).body(createdTask);
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<TaskResponse> updateTask(@PathVariable Long id, @Valid @RequestBody TaskUpdateRequest task) {
+        TaskResponse updatedTask = taskService.updateTask(id, task);
+        return ResponseEntity.status(HttpStatus.OK).body(updatedTask);
     }
 }
