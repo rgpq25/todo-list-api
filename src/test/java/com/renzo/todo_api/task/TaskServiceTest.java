@@ -87,6 +87,38 @@ public class TaskServiceTest {
             );
             verify(taskRepository).findAllWithFilters(null, null, null, null);
         }
+
+        @Test
+        void getAllWithFilters_AllParams_PassesFiltersAndReturnsTasks() {
+            LocalDate dueBefore = LocalDate.of(2026, 7, 1);
+            LocalDate dueAfter = LocalDate.of(2026, 6, 1);
+            Task task = Task.builder()
+                    .id(1L)
+                    .title("Matching task")
+                    .description("Matches every filter")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 6, 15))
+                    .createdAt(LocalDateTime.of(2026, 6, 27, 10, 0))
+                    .build();
+
+            when(taskRepository.findAllWithFilters(false, TaskPriority.HIGH, dueBefore, dueAfter))
+                    .thenReturn(List.of(task));
+
+            List<TaskResponse> tasks = taskService.getAllWithFilters(false, TaskPriority.HIGH, dueBefore, dueAfter);
+
+            assertThat(tasks).containsExactly(new TaskResponse(
+                    1L,
+                    "Matching task",
+                    "Matches every filter",
+                    false,
+                    TaskPriority.HIGH,
+                    LocalDate.of(2026, 6, 15),
+                    LocalDateTime.of(2026, 6, 27, 10, 0),
+                    null
+            ));
+            verify(taskRepository).findAllWithFilters(false, TaskPriority.HIGH, dueBefore, dueAfter);
+        }
     }
 
     @Nested

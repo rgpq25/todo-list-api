@@ -133,6 +133,48 @@ class TaskControllerTest {
                     LocalDate.of(2026, 6, 1)
             );
         }
+
+        @Test
+        void getTasksWithFilters_PriorityIsInvalid_Returns400() throws Exception {
+            mockMvc.perform(get("/api/tasks")
+                            .param("priority", "URGENT"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Invalid request parameter"))
+                    .andExpect(jsonPath("$.detail").value("One or more request parameters are invalid."))
+                    .andExpect(jsonPath("$.errors[0].field").value("priority"))
+                    .andExpect(jsonPath("$.errors[0].code").value("TypeMismatch"));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
+        void getTasksWithFilters_DueBeforeIsInvalid_Returns400() throws Exception {
+            mockMvc.perform(get("/api/tasks")
+                            .param("dueBefore", "not-a-date"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Invalid request parameter"))
+                    .andExpect(jsonPath("$.detail").value("One or more request parameters are invalid."))
+                    .andExpect(jsonPath("$.errors[0].field").value("dueBefore"))
+                    .andExpect(jsonPath("$.errors[0].code").value("TypeMismatch"));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
+        void getTasksWithFilters_CompletedIsInvalid_Returns400() throws Exception {
+            mockMvc.perform(get("/api/tasks")
+                            .param("completed", "not-a-boolean"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Invalid request parameter"))
+                    .andExpect(jsonPath("$.detail").value("One or more request parameters are invalid."))
+                    .andExpect(jsonPath("$.errors[0].field").value("completed"))
+                    .andExpect(jsonPath("$.errors[0].code").value("TypeMismatch"));
+
+            verifyNoInteractions(taskService);
+        }
     }
 
     @Nested
@@ -165,7 +207,7 @@ class TaskControllerTest {
 
         @Test
         void getTaskById_NonExistingTaskId_Returns404() throws Exception {
-            when(taskService.getTaskById(1L)).thenReturn(Optional.empty());
+            when(taskService.getTaskById(999L)).thenReturn(Optional.empty());
 
             mockMvc.perform(get("/api/tasks/{id}", 999L))
                     .andExpect(status().isNotFound())
@@ -312,8 +354,8 @@ class TaskControllerTest {
                     "This is the title",
                     "A long description, but very much longer!",
                     true,
-                    null,
-                    null
+                    TaskPriority.HIGH,
+                    LocalDate.of(2026, 6, 30)
             );
 
             TaskResponse taskResponse = new TaskResponse(
@@ -321,8 +363,8 @@ class TaskControllerTest {
                     "This is the title",
                     "A long description, but very much longer!",
                     true,
-                    null,
-                    null,
+                    TaskPriority.HIGH,
+                    LocalDate.of(2026, 6, 30),
                     LocalDateTime.of(2026, 5, 23, 12, 0),
                     LocalDateTime.now()
             );
@@ -334,7 +376,9 @@ class TaskControllerTest {
                                     {
                                         "title": "This is the title",
                                         "description": "A long description, but very much longer!",
-                                        "completed": true
+                                        "completed": true,
+                                        "priority": "HIGH",
+                                        "dueDate": "2026-06-30"
                                     }
                                     """))
                     .andExpect(status().isOk())
@@ -342,8 +386,8 @@ class TaskControllerTest {
                     .andExpect(jsonPath("$.title").value("This is the title"))
                     .andExpect(jsonPath("$.description").value("A long description, but very much longer!"))
                     .andExpect(jsonPath("$.completed").value(true))
-                    .andExpect(jsonPath("$.priority").value(nullValue()))
-                    .andExpect(jsonPath("$.dueDate").value(nullValue()))
+                    .andExpect(jsonPath("$.priority").value("HIGH"))
+                    .andExpect(jsonPath("$.dueDate").value("2026-06-30"))
                     .andExpect(jsonPath("$.createdAt").value(notNullValue()))
                     .andExpect(jsonPath("$.updatedAt").value(notNullValue()));
 
@@ -416,14 +460,16 @@ class TaskControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
-                                      "title": null
+                                      "title": null,
+                                      "completed": true
                                     }
                                     """))
                     .andExpect(status().isBadRequest())
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.title").value("Validation failed"))
                     .andExpect(jsonPath("$.detail").value("One or more request fields are invalid."))
-                    .andExpect(jsonPath("$.errors[*].field", hasItem("title")));
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("title")))
+                    .andExpect(jsonPath("$.errors[*].code", hasItem("NotNull")));
 
             verifyNoInteractions(taskService);
         }
@@ -436,7 +482,8 @@ class TaskControllerTest {
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
-                                      "title": "%s"
+                                      "title": "%s",
+                                      "completed": true
                                     }
                                     """.formatted(title)))
                     .andExpect(status().isBadRequest())
@@ -450,12 +497,56 @@ class TaskControllerTest {
         }
 
         @Test
+        void updateTask_CompletedIsNull_Returns400() throws Exception {
+            mockMvc.perform(put("/api/tasks/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": "Buy milk",
+                                      "completed": null
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.detail").value("One or more request fields are invalid."))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("completed")))
+                    .andExpect(jsonPath("$.errors[*].code", hasItem("NotNull")));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
+        void updateTask_DescriptionIsTooLong_Returns400() throws Exception {
+            String description = "a".repeat(1001);
+
+            mockMvc.perform(put("/api/tasks/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": "Buy milk",
+                                      "description": "%s",
+                                      "completed": true
+                                    }
+                                    """.formatted(description)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.detail").value("One or more request fields are invalid."))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("description")))
+                    .andExpect(jsonPath("$.errors[*].code", hasItem("Size")));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
         void updateTask_PriorityIsInvalid_Returns400() throws Exception {
             mockMvc.perform(put("/api/tasks/{id}", 1L)
                             .contentType(MediaType.APPLICATION_JSON)
                             .content("""
                                     {
                                       "title": "Buy milk",
+                                      "completed": true,
                                       "priority": "URGENT"
                                     }
                                     """))

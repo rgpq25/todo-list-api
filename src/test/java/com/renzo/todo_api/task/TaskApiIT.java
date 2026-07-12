@@ -83,6 +83,24 @@ class TaskApiIT {
                             .completed(true)
                             .priority(TaskPriority.HIGH)
                             .dueDate(LocalDate.of(2026, 6, 15))
+                            .build(),
+                    Task.builder()
+                            .title("Wrong priority")
+                            .completed(false)
+                            .priority(TaskPriority.LOW)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build(),
+                    Task.builder()
+                            .title("Due after boundary")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 1))
+                            .build(),
+                    Task.builder()
+                            .title("Due before boundary")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 7, 1))
                             .build()
             ));
 
@@ -97,6 +115,154 @@ class TaskApiIT {
                     .andExpect(jsonPath("$[0].completed").value(false))
                     .andExpect(jsonPath("$[0].priority").value("HIGH"))
                     .andExpect(jsonPath("$[0].dueDate").value("2026-06-15"));
+        }
+
+        @Test
+        void getTasksWithFilters_CompletedOnly_ReturnsMatchingTasks() throws Exception {
+            taskRepository.saveAll(List.of(
+                    Task.builder()
+                            .title("Open task")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build(),
+                    Task.builder()
+                            .title("Done task")
+                            .completed(true)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build(),
+                    Task.builder()
+                            .title("Another open task")
+                            .completed(false)
+                            .priority(TaskPriority.LOW)
+                            .dueDate(LocalDate.of(2026, 7, 1))
+                            .build()
+            ));
+
+            mockMvc.perform(get("/api/tasks")
+                            .param("completed", "false"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    .andExpect(jsonPath("$[*].title", containsInAnyOrder("Open task", "Another open task")));
+        }
+
+        @Test
+        void getTasksWithFilters_PriorityOnly_ReturnsMatchingTasks() throws Exception {
+            taskRepository.saveAll(List.of(
+                    Task.builder()
+                            .title("High priority task")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build(),
+                    Task.builder()
+                            .title("Low priority task")
+                            .completed(false)
+                            .priority(TaskPriority.LOW)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build(),
+                    Task.builder()
+                            .title("Another high priority task")
+                            .completed(true)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 7, 1))
+                            .build()
+            ));
+
+            mockMvc.perform(get("/api/tasks")
+                            .param("priority", "HIGH"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(2)))
+                    .andExpect(jsonPath("$[*].title", containsInAnyOrder("High priority task", "Another high priority task")));
+        }
+
+        @Test
+        void getTasksWithFilters_DueBeforeOnly_ExcludesBoundaryDate() throws Exception {
+            taskRepository.saveAll(List.of(
+                    Task.builder()
+                            .title("Before date")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 14))
+                            .build(),
+                    Task.builder()
+                            .title("Boundary date")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build(),
+                    Task.builder()
+                            .title("After date")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 16))
+                            .build()
+            ));
+
+            mockMvc.perform(get("/api/tasks")
+                            .param("dueBefore", "2026-06-15"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(1)))
+                    .andExpect(jsonPath("$[0].title").value("Before date"));
+        }
+
+        @Test
+        void getTasksWithFilters_DueAfterOnly_ExcludesBoundaryDate() throws Exception {
+            taskRepository.saveAll(List.of(
+                    Task.builder()
+                            .title("Before date")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 14))
+                            .build(),
+                    Task.builder()
+                            .title("Boundary date")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 15))
+                            .build(),
+                    Task.builder()
+                            .title("After date")
+                            .completed(false)
+                            .priority(TaskPriority.HIGH)
+                            .dueDate(LocalDate.of(2026, 6, 16))
+                            .build()
+            ));
+
+            mockMvc.perform(get("/api/tasks")
+                            .param("dueAfter", "2026-06-15"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(1)))
+                    .andExpect(jsonPath("$[0].title").value("After date"));
+        }
+
+        @Test
+        void getTasksWithFilters_PriorityIsInvalid_Returns400() throws Exception {
+            mockMvc.perform(get("/api/tasks")
+                            .param("priority", "URGENT"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Invalid request parameter"))
+                    .andExpect(jsonPath("$.detail").value("One or more request parameters are invalid."))
+                    .andExpect(jsonPath("$.errors[0].field").value("priority"))
+                    .andExpect(jsonPath("$.errors[0].code").value("TypeMismatch"));
+
+            assertThat(taskRepository.count()).isZero();
+        }
+
+        @Test
+        void getTasksWithFilters_DueBeforeIsInvalid_Returns400() throws Exception {
+            mockMvc.perform(get("/api/tasks")
+                            .param("dueBefore", "not-a-date"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Invalid request parameter"))
+                    .andExpect(jsonPath("$.detail").value("One or more request parameters are invalid."))
+                    .andExpect(jsonPath("$.errors[0].field").value("dueBefore"))
+                    .andExpect(jsonPath("$.errors[0].code").value("TypeMismatch"));
+
+            assertThat(taskRepository.count()).isZero();
         }
     }
 

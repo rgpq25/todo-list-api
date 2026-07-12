@@ -8,6 +8,7 @@ import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 import java.util.List;
 
@@ -46,6 +47,24 @@ public class GlobalExceptionHandler {
                 .title("Invalid request body")
                 .detail("Request body is malformed or contains unreadable values.")
                 .errors(List.of())
+                .build();
+
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ErrorResponse> handleTypeMismatch(MethodArgumentTypeMismatchException e) {
+        log.error(e.getMessage(), e);
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .title("Invalid request parameter")
+                .detail("One or more request parameters are invalid.")
+                .errors(List.of(new FieldErrorResponse(
+                        e.getName(),
+                        "TypeMismatch",
+                        "Invalid value for request parameter.",
+                        e.getValue()
+                )))
                 .build();
 
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errorResponse);
