@@ -2,6 +2,8 @@ package com.renzo.todo_api.task;
 
 import com.renzo.todo_api.task.dto.TaskRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
+import com.renzo.todo_api.task.dto.TaskUpdateRequest;
+import com.renzo.todo_api.task.exceptions.TaskNotFound;
 import com.renzo.todo_api.task.mappers.TaskMapper;
 import com.renzo.todo_api.task.models.Task;
 import com.renzo.todo_api.task.models.TaskPriority;
@@ -21,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -219,6 +222,103 @@ public class TaskServiceTest {
                     LocalDateTime.of(2026, 6, 27, 12, 30),
                     null
             ));
+        }
+    }
+
+    @Nested
+    class UpdateTask {
+        @Test
+        void updateTask_AllFields_ReturnsUpdatedTask() {
+            Task task = Task.builder()
+                    .id(1L)
+                    .title("titulo")
+                    .description("descripcion")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(null)
+                    .updatedAt(null)
+                    .createdAt(LocalDateTime.of(2026, 5, 3, 12, 0))
+                    .build();
+
+            TaskUpdateRequest taskUpdateRequest = new TaskUpdateRequest(
+                    "Nuevo titulo!",
+                    "Otra descripcion, diferente!",
+                    true,
+                    TaskPriority.LOW,
+                    LocalDate.of(2026, 6, 30)
+            );
+
+            when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+            TaskResponse taskResponse = taskService.updateTask(1L, taskUpdateRequest);
+
+            assertThat(taskResponse.id()).isEqualTo(1L);
+            assertThat(taskResponse.title()).isEqualTo("Nuevo titulo!");
+            assertThat(taskResponse.description()).isEqualTo("Otra descripcion, diferente!");
+            assertThat(taskResponse.completed()).isTrue();
+            assertThat(taskResponse.priority()).isEqualTo(TaskPriority.LOW);
+            assertThat(taskResponse.dueDate()).isEqualTo(LocalDate.of(2026, 6, 30));
+            assertThat(taskResponse.updatedAt()).isNotNull();
+            assertThat(taskResponse.createdAt()).isEqualTo(task.getCreatedAt());
+
+            verify(taskRepository).findById(1L);
+        }
+
+        @Test
+        void updateTask_NullOptionalFields_ReturnsUpdatedTask() {
+            Task task = Task.builder()
+                    .id(1L)
+                    .title("titulo")
+                    .description("descripcion")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(null)
+                    .updatedAt(null)
+                    .createdAt(LocalDateTime.of(2026, 5, 3, 12, 0))
+                    .build();
+
+            TaskUpdateRequest taskUpdateRequest = new TaskUpdateRequest(
+                    "Nuevo titulo!",
+                    null,
+                    true,
+                    null,
+                    null
+            );
+
+            when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+            TaskResponse taskResponse = taskService.updateTask(1L, taskUpdateRequest);
+
+            assertThat(taskResponse.id()).isEqualTo(1L);
+            assertThat(taskResponse.title()).isEqualTo("Nuevo titulo!");
+            assertThat(taskResponse.description()).isNull();
+            assertThat(taskResponse.completed()).isTrue();
+            assertThat(taskResponse.priority()).isNull();
+            assertThat(taskResponse.dueDate()).isNull();
+            assertThat(taskResponse.updatedAt()).isNotNull();
+            assertThat(taskResponse.createdAt()).isEqualTo(task.getCreatedAt());
+
+            verify(taskRepository).findById(1L);
+        }
+
+        @Test
+        void updateTask_NonExistingTaskId_ThrowsTaskNotFoundException() {
+            TaskUpdateRequest taskUpdateRequest = new TaskUpdateRequest(
+                    "Nuevo titulo!",
+                    null,
+                    false,
+                    null,
+                    null
+            );
+
+            when(taskRepository.findById(999L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> taskService.updateTask(999L, taskUpdateRequest))
+                    .isInstanceOf(TaskNotFound.class)
+                    .hasMessage("Task with id 999 was not found.");
+
+            verify(taskRepository).findById(999L);
+            verifyNoMoreInteractions(taskRepository);
         }
     }
 }

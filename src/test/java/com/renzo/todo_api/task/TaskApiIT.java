@@ -14,12 +14,12 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
@@ -388,6 +388,239 @@ class TaskApiIT {
                     .andExpect(jsonPath("$.errors", hasSize(0)));
 
             assertThat(taskRepository.count()).isZero();
+        }
+    }
+
+    @Nested
+    class UpdateTask {
+        @Test
+        void updateTask_AllFields_ReturnsUpdatedTaskAndPersistsChanges() throws Exception {
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.LOW)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+            LocalDateTime originalCreatedAt = taskRepository.findById(savedTask.getId()).orElseThrow().getCreatedAt();
+
+            mockMvc.perform(put("/api/tasks/{id}", savedTask.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": "Buy milk",
+                                      "description": "Before 6pm",
+                                      "completed": true,
+                                      "priority": "MEDIUM",
+                                      "dueDate": "2026-06-30"
+                                    }
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(savedTask.getId()))
+                    .andExpect(jsonPath("$.title").value("Buy milk"))
+                    .andExpect(jsonPath("$.description").value("Before 6pm"))
+                    .andExpect(jsonPath("$.completed").value(true))
+                    .andExpect(jsonPath("$.priority").value("MEDIUM"))
+                    .andExpect(jsonPath("$.dueDate").value("2026-06-30"))
+                    .andExpect(jsonPath("$.createdAt").value(notNullValue()))
+                    .andExpect(jsonPath("$.updatedAt").value(notNullValue()));
+
+            Task updatedTask = taskRepository.findById(savedTask.getId()).orElseThrow();
+
+            assertThat(updatedTask.getTitle()).isEqualTo("Buy milk");
+            assertThat(updatedTask.getDescription()).isEqualTo("Before 6pm");
+            assertThat(updatedTask.getCompleted()).isTrue();
+            assertThat(updatedTask.getPriority()).isEqualTo(TaskPriority.MEDIUM);
+            assertThat(updatedTask.getDueDate()).isEqualTo(LocalDate.of(2026, 6, 30));
+            assertThat(updatedTask.getCreatedAt()).isEqualTo(originalCreatedAt);
+            assertThat(updatedTask.getUpdatedAt()).isNotNull();
+        }
+
+        @Test
+        void updateTask_NullOptionalFields_ClearsOptionalFieldsAndPersistsChanges() throws Exception {
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.LOW)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+            LocalDateTime originalCreatedAt = taskRepository.findById(savedTask.getId()).orElseThrow().getCreatedAt();
+
+            mockMvc.perform(put("/api/tasks/{id}", savedTask.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": "Buy milk",
+                                      "description": null,
+                                      "completed": true,
+                                      "priority": null,
+                                      "dueDate": null
+                                    }
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(savedTask.getId()))
+                    .andExpect(jsonPath("$.title").value("Buy milk"))
+                    .andExpect(jsonPath("$.description").value(nullValue()))
+                    .andExpect(jsonPath("$.completed").value(true))
+                    .andExpect(jsonPath("$.priority").value(nullValue()))
+                    .andExpect(jsonPath("$.dueDate").value(nullValue()))
+                    .andExpect(jsonPath("$.createdAt").value(notNullValue()))
+                    .andExpect(jsonPath("$.updatedAt").value(notNullValue()));
+
+            Task updatedTask = taskRepository.findById(savedTask.getId()).orElseThrow();
+
+            assertThat(updatedTask.getTitle()).isEqualTo("Buy milk");
+            assertThat(updatedTask.getDescription()).isNull();
+            assertThat(updatedTask.getCompleted()).isTrue();
+            assertThat(updatedTask.getPriority()).isNull();
+            assertThat(updatedTask.getDueDate()).isNull();
+            assertThat(updatedTask.getCreatedAt()).isEqualTo(originalCreatedAt);
+            assertThat(updatedTask.getUpdatedAt()).isNotNull();
+        }
+
+        @Test
+        void updateTask_NonExistingTaskId_Returns404() throws Exception {
+            Long missingId = 999999L;
+
+            mockMvc.perform(put("/api/tasks/{id}", missingId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": "Buy milk",
+                                      "description": "Before 6pm",
+                                      "completed": true,
+                                      "priority": "MEDIUM",
+                                      "dueDate": "2026-06-30"
+                                    }
+                                    """))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Task not found"))
+                    .andExpect(jsonPath("$.detail").value("Task with id 999999 was not found."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            assertThat(taskRepository.count()).isZero();
+        }
+
+        @Test
+        void updateTask_TitleIsNull_Returns400AndDoesNotModifyDatabase() throws Exception {
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.LOW)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+
+            mockMvc.perform(put("/api/tasks/{id}", savedTask.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": null,
+                                      "description": "Before 6pm",
+                                      "completed": true,
+                                      "priority": "MEDIUM",
+                                      "dueDate": "2026-06-30"
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.detail").value("One or more request fields are invalid."))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("title")))
+                    .andExpect(jsonPath("$.errors[*].code", hasItem("NotNull")));
+
+            Task unchangedTask = taskRepository.findById(savedTask.getId()).orElseThrow();
+
+            assertThat(taskRepository.count()).isEqualTo(1);
+            assertThat(unchangedTask.getTitle()).isEqualTo("Read docs");
+            assertThat(unchangedTask.getDescription()).isEqualTo("Spring MVC testing");
+            assertThat(unchangedTask.getCompleted()).isFalse();
+            assertThat(unchangedTask.getPriority()).isEqualTo(TaskPriority.LOW);
+            assertThat(unchangedTask.getDueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
+            assertThat(unchangedTask.getUpdatedAt()).isNull();
+        }
+
+        @Test
+        void updateTask_CompletedIsNull_Returns400AndDoesNotModifyDatabase() throws Exception {
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.LOW)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+
+            mockMvc.perform(put("/api/tasks/{id}", savedTask.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": "Buy milk",
+                                      "description": "Before 6pm",
+                                      "completed": null,
+                                      "priority": "MEDIUM",
+                                      "dueDate": "2026-06-30"
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.detail").value("One or more request fields are invalid."))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("completed")))
+                    .andExpect(jsonPath("$.errors[*].code", hasItem("NotNull")));
+
+            Task unchangedTask = taskRepository.findById(savedTask.getId()).orElseThrow();
+
+            assertThat(taskRepository.count()).isEqualTo(1);
+            assertThat(unchangedTask.getTitle()).isEqualTo("Read docs");
+            assertThat(unchangedTask.getDescription()).isEqualTo("Spring MVC testing");
+            assertThat(unchangedTask.getCompleted()).isFalse();
+            assertThat(unchangedTask.getPriority()).isEqualTo(TaskPriority.LOW);
+            assertThat(unchangedTask.getDueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
+            assertThat(unchangedTask.getUpdatedAt()).isNull();
+        }
+
+        @Test
+        void updateTask_DescriptionIsTooLong_Returns400AndDoesNotModifyDatabase() throws Exception {
+            String description = "a".repeat(1001);
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.LOW)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+
+            mockMvc.perform(put("/api/tasks/{id}", savedTask.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": "Buy milk",
+                                      "description": "%s",
+                                      "completed": true,
+                                      "priority": "MEDIUM",
+                                      "dueDate": "2026-06-30"
+                                    }
+                                    """.formatted(description)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.detail").value("One or more request fields are invalid."))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("description")))
+                    .andExpect(jsonPath("$.errors[*].code", hasItem("Size")));
+
+            Task unchangedTask = taskRepository.findById(savedTask.getId()).orElseThrow();
+
+            assertThat(taskRepository.count()).isEqualTo(1);
+            assertThat(unchangedTask.getTitle()).isEqualTo("Read docs");
+            assertThat(unchangedTask.getDescription()).isEqualTo("Spring MVC testing");
+            assertThat(unchangedTask.getCompleted()).isFalse();
+            assertThat(unchangedTask.getPriority()).isEqualTo(TaskPriority.LOW);
+            assertThat(unchangedTask.getDueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
+            assertThat(unchangedTask.getUpdatedAt()).isNull();
         }
     }
 }
