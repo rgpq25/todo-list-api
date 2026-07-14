@@ -1,6 +1,6 @@
 package com.renzo.todo_api.task.mappers;
 
-import com.renzo.todo_api.task.dto.TaskRequest;
+import com.renzo.todo_api.task.dto.TaskCreateRequest;
 import com.renzo.todo_api.task.dto.TaskPatchRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.dto.TaskUpdateRequest;
@@ -24,7 +24,7 @@ public class TaskMapper {
         );
     }
 
-    public Task toEntity(TaskRequest response) {
+    public Task toEntity(TaskCreateRequest response) {
         if (response == null) return null;
 
         return Task.builder()

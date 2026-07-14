@@ -2,7 +2,7 @@ package com.renzo.todo_api.task;
 
 import com.renzo.todo_api.task.controllers.TaskController;
 import com.renzo.todo_api.task.dto.TaskPatchRequest;
-import com.renzo.todo_api.task.dto.TaskRequest;
+import com.renzo.todo_api.task.dto.TaskCreateRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.dto.TaskUpdateRequest;
 import com.renzo.todo_api.task.exceptions.TaskNotFound;
@@ -227,7 +227,7 @@ class TaskControllerTest {
     class CreateTaskTests {
         @Test
         void createTask_AllFields_ReturnsCreatedTask() throws Exception {
-            when(taskService.createTask(any(TaskRequest.class))).thenReturn(new TaskResponse(
+            when(taskService.createTask(any(TaskCreateRequest.class))).thenReturn(new TaskResponse(
                     1L,
                     "Buy milk",
                     "Before 6pm",
@@ -259,10 +259,10 @@ class TaskControllerTest {
                     .andExpect(jsonPath("$.createdAt").value(notNullValue()))
                     .andExpect(jsonPath("$.updatedAt").value(nullValue()));
 
-            ArgumentCaptor<TaskRequest> requestCaptor = ArgumentCaptor.forClass(TaskRequest.class);
+            ArgumentCaptor<TaskCreateRequest> requestCaptor = ArgumentCaptor.forClass(TaskCreateRequest.class);
             verify(taskService).createTask(requestCaptor.capture());
 
-            assertThat(requestCaptor.getValue()).isEqualTo(new TaskRequest(
+            assertThat(requestCaptor.getValue()).isEqualTo(new TaskCreateRequest(
                     "Buy milk",
                     "Before 6pm",
                     TaskPriority.MEDIUM,

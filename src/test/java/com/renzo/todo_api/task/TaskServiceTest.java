@@ -1,6 +1,6 @@
 package com.renzo.todo_api.task;
 
-import com.renzo.todo_api.task.dto.TaskRequest;
+import com.renzo.todo_api.task.dto.TaskCreateRequest;
 import com.renzo.todo_api.task.dto.TaskPatchRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.dto.TaskUpdateRequest;
@@ -169,7 +169,7 @@ public class TaskServiceTest {
     class CreateTaskTests {
         @Test
         void createTask_AllFields_ReturnsCreatedTask() {
-            TaskRequest request = new TaskRequest(
+            TaskCreateRequest request = new TaskCreateRequest(
                     "Buy milk",
                     "Before 6pm",
                     TaskPriority.MEDIUM,
@@ -214,7 +214,7 @@ public class TaskServiceTest {
 
         @Test
         void createTask_NullOptionalFields_ReturnsCreatedTask() {
-            TaskRequest request = new TaskRequest(
+            TaskCreateRequest request = new TaskCreateRequest(
                     "Buy milk",
                     null,
                     null,

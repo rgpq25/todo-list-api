@@ -1,6 +1,6 @@
 package com.renzo.todo_api.task.services;
 
-import com.renzo.todo_api.task.dto.TaskRequest;
+import com.renzo.todo_api.task.dto.TaskCreateRequest;
 import com.renzo.todo_api.task.dto.TaskPatchRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.dto.TaskUpdateRequest;
@@ -42,7 +42,7 @@ public class TaskService {
         return task.map(taskMapper::toResponse);
     }
 
-    public TaskResponse createTask(TaskRequest taskDto) {
+    public TaskResponse createTask(TaskCreateRequest taskDto) {
         Task taskEntity = taskMapper.toEntity(taskDto);
         Task createdTask = taskRepository.save(taskEntity);
         return taskMapper.toResponse(createdTask);

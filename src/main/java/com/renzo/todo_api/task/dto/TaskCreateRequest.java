@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDate;
 
-public record TaskRequest(
+public record TaskCreateRequest(
         @NotNull(message = "The title must be supplied.")
         @NotBlank(message = "The title must not be empty.")
         @Size(max = 50, message = "The title must have at most 50 characters.")
