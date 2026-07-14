@@ -1,6 +1,7 @@
 package com.renzo.todo_api.task.mappers;
 
 import com.renzo.todo_api.task.dto.TaskRequest;
+import com.renzo.todo_api.task.dto.TaskPatchRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.dto.TaskUpdateRequest;
 import com.renzo.todo_api.task.models.Task;
@@ -41,5 +42,13 @@ public class TaskMapper {
         entity.setCompleted(request.completed());
         entity.setPriority(request.priority());
         entity.setDueDate(request.dueDate());
+    }
+
+    public void patchEntity(Task entity, TaskPatchRequest request) {
+        if (request.hasTitle()) entity.setTitle(request.getTitle());
+        if (request.hasDescription()) entity.setDescription(request.getDescription());
+        if (request.hasCompleted()) entity.setCompleted(request.getCompleted());
+        if (request.hasPriority()) entity.setPriority(request.getPriority());
+        if (request.hasDueDate()) entity.setDueDate(request.getDueDate());
     }
 }

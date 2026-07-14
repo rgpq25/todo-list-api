@@ -1,6 +1,7 @@
 package com.renzo.todo_api.task;
 
 import com.renzo.todo_api.task.controllers.TaskController;
+import com.renzo.todo_api.task.dto.TaskPatchRequest;
 import com.renzo.todo_api.task.dto.TaskRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.dto.TaskUpdateRequest;
@@ -24,6 +25,8 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -554,6 +557,232 @@ class TaskControllerTest {
                     .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                     .andExpect(jsonPath("$.title").value("Invalid request body"))
                     .andExpect(jsonPath("$.detail").value("Request body is malformed or contains unreadable values."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            verifyNoInteractions(taskService);
+        }
+    }
+
+    @Nested
+    class PatchTask {
+        @Test
+        void patchTask_SpecifiedField_Returns200AndPassesOnlySpecifiedField() throws Exception {
+            Long taskId = 1L;
+            when(taskService.patchTask(anyLong(), any(TaskPatchRequest.class))).thenReturn(new TaskResponse(
+                    taskId,
+                    "Read docs",
+                    "Spring MVC testing",
+                    false,
+                    TaskPriority.LOW,
+                    LocalDate.of(2026, 7, 10),
+                    LocalDateTime.of(2026, 6, 27, 10, 0),
+                    LocalDateTime.of(2026, 6, 27, 11, 0)
+            ));
+
+            mockMvc.perform(patch("/api/tasks/{id}", taskId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "priority": "LOW"
+                                    }
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(taskId))
+                    .andExpect(jsonPath("$.priority").value("LOW"));
+
+            ArgumentCaptor<TaskPatchRequest> requestCaptor = ArgumentCaptor.forClass(TaskPatchRequest.class);
+            verify(taskService).patchTask(eq(taskId), requestCaptor.capture());
+
+            TaskPatchRequest request = requestCaptor.getValue();
+            assertThat(request.hasPriority()).isTrue();
+            assertThat(request.getPriority()).isEqualTo(TaskPriority.LOW);
+            assertThat(request.hasTitle()).isFalse();
+            assertThat(request.hasDescription()).isFalse();
+            assertThat(request.hasCompleted()).isFalse();
+            assertThat(request.hasDueDate()).isFalse();
+        }
+
+        @Test
+        void patchTask_NullOptionalField_Returns200AndPassesSpecifiedNull() throws Exception {
+            Long taskId = 1L;
+            when(taskService.patchTask(anyLong(), any(TaskPatchRequest.class))).thenReturn(new TaskResponse(
+                    taskId,
+                    "Read docs",
+                    null,
+                    false,
+                    TaskPriority.LOW,
+                    LocalDate.of(2026, 7, 10),
+                    LocalDateTime.of(2026, 6, 27, 10, 0),
+                    LocalDateTime.of(2026, 6, 27, 11, 0)
+            ));
+
+            mockMvc.perform(patch("/api/tasks/{id}", taskId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "description": null
+                                    }
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.description").value(nullValue()));
+
+            ArgumentCaptor<TaskPatchRequest> requestCaptor = ArgumentCaptor.forClass(TaskPatchRequest.class);
+            verify(taskService).patchTask(eq(taskId), requestCaptor.capture());
+
+            TaskPatchRequest request = requestCaptor.getValue();
+            assertThat(request.hasDescription()).isTrue();
+            assertThat(request.getDescription()).isNull();
+        }
+
+        @Test
+        void patchTask_NonExistingTaskId_Returns404() throws Exception {
+            Long taskId = 999L;
+            when(taskService.patchTask(anyLong(), any(TaskPatchRequest.class))).thenThrow(new TaskNotFound(taskId));
+
+            mockMvc.perform(patch("/api/tasks/{id}", taskId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "completed": true
+                                    }
+                                    """))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Task not found"))
+                    .andExpect(jsonPath("$.detail").value("Task with id 999 was not found."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            verify(taskService).patchTask(anyLong(), any(TaskPatchRequest.class));
+        }
+
+        @Test
+        void patchTask_EmptyBody_Returns400() throws Exception {
+            mockMvc.perform(patch("/api/tasks/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.detail").value("One or more request fields are invalid."))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("request")));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
+        void patchTask_TitleIsNull_Returns400() throws Exception {
+            mockMvc.perform(patch("/api/tasks/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": null
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("title")));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
+        void patchTask_TitleIsBlank_Returns400() throws Exception {
+            mockMvc.perform(patch("/api/tasks/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": "  "
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("title")));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
+        void patchTask_CompletedIsNull_Returns400() throws Exception {
+            mockMvc.perform(patch("/api/tasks/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "completed": null
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("completed")));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
+        void patchTask_TitleIsTooLong_Returns400() throws Exception {
+            String title = "a".repeat(51);
+
+            mockMvc.perform(patch("/api/tasks/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": "%s"
+                                    }
+                                    """.formatted(title)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("title")))
+                    .andExpect(jsonPath("$.errors[*].code", hasItem("Size")));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
+        void patchTask_DescriptionIsTooLong_Returns400() throws Exception {
+            String description = "a".repeat(1001);
+
+            mockMvc.perform(patch("/api/tasks/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "description": "%s"
+                                    }
+                                    """.formatted(description)))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("description")))
+                    .andExpect(jsonPath("$.errors[*].code", hasItem("Size")));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
+        void patchTask_PriorityIsInvalid_Returns400() throws Exception {
+            mockMvc.perform(patch("/api/tasks/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "priority": "URGENT"
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.title").value("Invalid request body"))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            verifyNoInteractions(taskService);
+        }
+
+        @Test
+        void patchTask_DueDateIsInvalid_Returns400() throws Exception {
+            mockMvc.perform(patch("/api/tasks/{id}", 1L)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "dueDate": "not-a-date"
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.title").value("Invalid request body"))
                     .andExpect(jsonPath("$.errors", hasSize(0)));
 
             verifyNoInteractions(taskService);

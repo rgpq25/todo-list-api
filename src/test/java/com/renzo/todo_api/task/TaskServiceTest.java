@@ -1,6 +1,7 @@
 package com.renzo.todo_api.task;
 
 import com.renzo.todo_api.task.dto.TaskRequest;
+import com.renzo.todo_api.task.dto.TaskPatchRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.dto.TaskUpdateRequest;
 import com.renzo.todo_api.task.exceptions.TaskNotFound;
@@ -346,6 +347,107 @@ public class TaskServiceTest {
             when(taskRepository.findById(999L)).thenReturn(Optional.empty());
 
             assertThatThrownBy(() -> taskService.updateTask(999L, taskUpdateRequest))
+                    .isInstanceOf(TaskNotFound.class)
+                    .hasMessage("Task with id 999 was not found.");
+
+            verify(taskRepository).findById(999L);
+            verifyNoMoreInteractions(taskRepository);
+        }
+    }
+
+    @Nested
+    class PatchTask {
+        @Test
+        void patchTask_OneSpecifiedField_PreservesOmittedFields() {
+            Task task = Task.builder()
+                    .id(1L)
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .createdAt(LocalDateTime.of(2026, 5, 3, 12, 0))
+                    .build();
+            TaskPatchRequest request = new TaskPatchRequest();
+            request.setPriority(TaskPriority.LOW);
+            when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+            TaskResponse response = taskService.patchTask(1L, request);
+
+            assertThat(response.title()).isEqualTo("Read docs");
+            assertThat(response.description()).isEqualTo("Spring MVC testing");
+            assertThat(response.completed()).isFalse();
+            assertThat(response.priority()).isEqualTo(TaskPriority.LOW);
+            assertThat(response.dueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
+            assertThat(response.createdAt()).isEqualTo(LocalDateTime.of(2026, 5, 3, 12, 0));
+            assertThat(response.updatedAt()).isNotNull();
+            verify(taskRepository).findById(1L);
+        }
+
+        @Test
+        void patchTask_MultipleSpecifiedFields_PreservesOmittedFields() {
+            Task task = Task.builder()
+                    .id(1L)
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .createdAt(LocalDateTime.of(2026, 5, 3, 12, 0))
+                    .build();
+            TaskPatchRequest request = new TaskPatchRequest();
+            request.setTitle("Write tests");
+            request.setCompleted(true);
+            when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+            TaskResponse response = taskService.patchTask(1L, request);
+
+            assertThat(response.title()).isEqualTo("Write tests");
+            assertThat(response.completed()).isTrue();
+            assertThat(response.description()).isEqualTo("Spring MVC testing");
+            assertThat(response.priority()).isEqualTo(TaskPriority.HIGH);
+            assertThat(response.dueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
+            assertThat(response.createdAt()).isEqualTo(LocalDateTime.of(2026, 5, 3, 12, 0));
+            assertThat(response.updatedAt()).isNotNull();
+            verify(taskRepository).findById(1L);
+        }
+
+        @Test
+        void patchTask_NullOptionalFields_ClearsOnlySpecifiedOptionalFields() {
+            Task task = Task.builder()
+                    .id(1L)
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .createdAt(LocalDateTime.of(2026, 5, 3, 12, 0))
+                    .build();
+            TaskPatchRequest request = new TaskPatchRequest();
+            request.setDescription(null);
+            request.setPriority(null);
+            request.setDueDate(null);
+            when(taskRepository.findById(1L)).thenReturn(Optional.of(task));
+
+            TaskResponse response = taskService.patchTask(1L, request);
+
+            assertThat(response.title()).isEqualTo("Read docs");
+            assertThat(response.completed()).isFalse();
+            assertThat(response.description()).isNull();
+            assertThat(response.priority()).isNull();
+            assertThat(response.dueDate()).isNull();
+            assertThat(response.createdAt()).isEqualTo(LocalDateTime.of(2026, 5, 3, 12, 0));
+            assertThat(response.updatedAt()).isNotNull();
+            verify(taskRepository).findById(1L);
+        }
+
+        @Test
+        void patchTask_NonExistingTaskId_ThrowsTaskNotFoundException() {
+            TaskPatchRequest request = new TaskPatchRequest();
+            request.setCompleted(true);
+            when(taskRepository.findById(999L)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> taskService.patchTask(999L, request))
                     .isInstanceOf(TaskNotFound.class)
                     .hasMessage("Task with id 999 was not found.");
 

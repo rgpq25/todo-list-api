@@ -1,5 +1,6 @@
 package com.renzo.todo_api.task.controllers;
 
+import com.renzo.todo_api.task.dto.TaskPatchRequest;
 import com.renzo.todo_api.task.dto.TaskRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.dto.TaskUpdateRequest;
@@ -50,5 +51,11 @@ public class TaskController {
     public ResponseEntity<TaskResponse> updateTask(@PathVariable Long id, @Valid @RequestBody TaskUpdateRequest task) {
         TaskResponse updatedTask = taskService.updateTask(id, task);
         return ResponseEntity.status(HttpStatus.OK).body(updatedTask);
+    }
+
+    @PatchMapping("/{id}")
+    public ResponseEntity<TaskResponse> patchTask(@PathVariable Long id, @Valid @RequestBody TaskPatchRequest task) {
+        TaskResponse patchedTask = taskService.patchTask(id, task);
+        return ResponseEntity.status(HttpStatus.OK).body(patchedTask);
     }
 }

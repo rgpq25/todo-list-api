@@ -789,4 +789,169 @@ class TaskApiIT {
             assertThat(unchangedTask.getUpdatedAt()).isNull();
         }
     }
+
+    @Nested
+    class PatchTask {
+        @Test
+        void patchTask_OneSpecifiedField_PersistsOnlyThatChange() throws Exception {
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+            LocalDateTime originalCreatedAt = taskRepository.findById(savedTask.getId()).orElseThrow().getCreatedAt();
+
+            mockMvc.perform(patch("/api/tasks/{id}", savedTask.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "priority": "LOW"
+                                    }
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(savedTask.getId()))
+                    .andExpect(jsonPath("$.title").value("Read docs"))
+                    .andExpect(jsonPath("$.description").value("Spring MVC testing"))
+                    .andExpect(jsonPath("$.completed").value(false))
+                    .andExpect(jsonPath("$.priority").value("LOW"))
+                    .andExpect(jsonPath("$.dueDate").value("2026-07-10"))
+                    .andExpect(jsonPath("$.createdAt").value(notNullValue()))
+                    .andExpect(jsonPath("$.updatedAt").value(notNullValue()));
+
+            Task updatedTask = taskRepository.findById(savedTask.getId()).orElseThrow();
+
+            assertThat(updatedTask.getTitle()).isEqualTo("Read docs");
+            assertThat(updatedTask.getDescription()).isEqualTo("Spring MVC testing");
+            assertThat(updatedTask.getCompleted()).isFalse();
+            assertThat(updatedTask.getPriority()).isEqualTo(TaskPriority.LOW);
+            assertThat(updatedTask.getDueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
+            assertThat(updatedTask.getCreatedAt()).isEqualTo(originalCreatedAt);
+            assertThat(updatedTask.getUpdatedAt()).isNotNull();
+        }
+
+        @Test
+        void patchTask_NullOptionalFields_ClearsOnlySpecifiedFields() throws Exception {
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+            LocalDateTime originalCreatedAt = taskRepository.findById(savedTask.getId()).orElseThrow().getCreatedAt();
+
+            mockMvc.perform(patch("/api/tasks/{id}", savedTask.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "description": null,
+                                      "priority": null,
+                                      "dueDate": null
+                                    }
+                                    """))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.title").value("Read docs"))
+                    .andExpect(jsonPath("$.completed").value(false))
+                    .andExpect(jsonPath("$.description").value(nullValue()))
+                    .andExpect(jsonPath("$.priority").value(nullValue()))
+                    .andExpect(jsonPath("$.dueDate").value(nullValue()))
+                    .andExpect(jsonPath("$.createdAt").value(notNullValue()))
+                    .andExpect(jsonPath("$.updatedAt").value(notNullValue()));
+
+            Task updatedTask = taskRepository.findById(savedTask.getId()).orElseThrow();
+
+            assertThat(updatedTask.getTitle()).isEqualTo("Read docs");
+            assertThat(updatedTask.getCompleted()).isFalse();
+            assertThat(updatedTask.getDescription()).isNull();
+            assertThat(updatedTask.getPriority()).isNull();
+            assertThat(updatedTask.getDueDate()).isNull();
+            assertThat(updatedTask.getCreatedAt()).isEqualTo(originalCreatedAt);
+            assertThat(updatedTask.getUpdatedAt()).isNotNull();
+        }
+
+        @Test
+        void patchTask_EmptyBody_Returns400AndDoesNotModifyDatabase() throws Exception {
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+
+            mockMvc.perform(patch("/api/tasks/{id}", savedTask.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{}"))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("request")));
+
+            Task unchangedTask = taskRepository.findById(savedTask.getId()).orElseThrow();
+
+            assertThat(unchangedTask.getTitle()).isEqualTo("Read docs");
+            assertThat(unchangedTask.getDescription()).isEqualTo("Spring MVC testing");
+            assertThat(unchangedTask.getCompleted()).isFalse();
+            assertThat(unchangedTask.getPriority()).isEqualTo(TaskPriority.HIGH);
+            assertThat(unchangedTask.getDueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
+            assertThat(unchangedTask.getUpdatedAt()).isNull();
+        }
+
+        @Test
+        void patchTask_NonExistingTaskId_Returns404() throws Exception {
+            Long missingId = 999999L;
+
+            mockMvc.perform(patch("/api/tasks/{id}", missingId)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "completed": true
+                                    }
+                                    """))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Task not found"))
+                    .andExpect(jsonPath("$.detail").value("Task with id 999999 was not found."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            assertThat(taskRepository.count()).isZero();
+        }
+
+        @Test
+        void patchTask_NonNullableFieldsAreNull_Returns400AndDoesNotModifyDatabase() throws Exception {
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+
+            mockMvc.perform(patch("/api/tasks/{id}", savedTask.getId())
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("""
+                                    {
+                                      "title": null,
+                                      "completed": null
+                                    }
+                                    """))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Validation failed"))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("title")))
+                    .andExpect(jsonPath("$.errors[*].field", hasItem("completed")));
+
+            Task unchangedTask = taskRepository.findById(savedTask.getId()).orElseThrow();
+
+            assertThat(unchangedTask.getTitle()).isEqualTo("Read docs");
+            assertThat(unchangedTask.getDescription()).isEqualTo("Spring MVC testing");
+            assertThat(unchangedTask.getCompleted()).isFalse();
+            assertThat(unchangedTask.getPriority()).isEqualTo(TaskPriority.HIGH);
+            assertThat(unchangedTask.getDueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
+            assertThat(unchangedTask.getUpdatedAt()).isNull();
+        }
+    }
 }

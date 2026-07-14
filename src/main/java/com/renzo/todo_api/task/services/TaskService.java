@@ -1,6 +1,7 @@
 package com.renzo.todo_api.task.services;
 
 import com.renzo.todo_api.task.dto.TaskRequest;
+import com.renzo.todo_api.task.dto.TaskPatchRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.dto.TaskUpdateRequest;
 import com.renzo.todo_api.task.exceptions.TaskNotFound;
@@ -52,6 +53,15 @@ public class TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFound(id));
         taskMapper.updateEntity(task, taskDto);
+        task.setUpdatedAt(LocalDateTime.now());
+        return taskMapper.toResponse(task);
+    }
+
+    @Transactional
+    public TaskResponse patchTask(Long id, TaskPatchRequest taskDto) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFound(id));
+        taskMapper.patchEntity(task, taskDto);
         task.setUpdatedAt(LocalDateTime.now());
         return taskMapper.toResponse(task);
     }
