@@ -836,4 +836,53 @@ class TaskControllerTest {
             verify(taskService).completeTask(taskToCompleteId);
         }
     }
+
+    @Nested
+    class IncompleteTask {
+        @Test
+        void incompleteTask_ExistingTaskId_Returns200() throws Exception {
+            Long taskToMarkIncompleteId = 1L;
+            TaskResponse taskResponse = new TaskResponse(
+                    taskToMarkIncompleteId,
+                    "The title",
+                    "The description",
+                    false,
+                    TaskPriority.HIGH,
+                    null,
+                    LocalDateTime.of(2026, 6, 1, 12, 0),
+                    LocalDateTime.of(2026, 6, 1, 12, 30)
+            );
+            when(taskService.incompleteTask(taskToMarkIncompleteId)).thenReturn(taskResponse);
+
+            mockMvc.perform(patch("/api/tasks/{id}/incomplete", taskToMarkIncompleteId)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(taskToMarkIncompleteId))
+                    .andExpect(jsonPath("$.title").value("The title"))
+                    .andExpect(jsonPath("$.description").value("The description"))
+                    .andExpect(jsonPath("$.completed").value(false))
+                    .andExpect(jsonPath("$.priority").value("HIGH"))
+                    .andExpect(jsonPath("$.dueDate").value(nullValue()))
+                    .andExpect(jsonPath("$.updatedAt").value(notNullValue()));
+
+            verify(taskService).incompleteTask(taskToMarkIncompleteId);
+        }
+
+        @Test
+        void incompleteTask_NonExistingTaskId_Returns404() throws Exception {
+            Long taskToMarkIncompleteId = 999L;
+            when(taskService.incompleteTask(taskToMarkIncompleteId)).thenThrow(new TaskNotFound(taskToMarkIncompleteId));
+
+            mockMvc.perform(patch("/api/tasks/{id}/incomplete", taskToMarkIncompleteId)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Task not found"))
+                    .andExpect(jsonPath("$.detail").value("Task with id 999 was not found."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            verify(taskService).incompleteTask(taskToMarkIncompleteId);
+        }
+    }
 }

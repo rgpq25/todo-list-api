@@ -64,4 +64,10 @@ public class TaskController {
         TaskResponse patchedTask = taskService.completeTask(id);
         return ResponseEntity.status(HttpStatus.OK).body(patchedTask);
     }
+
+    @PatchMapping("/{id}/incomplete")
+    public ResponseEntity<TaskResponse> incompleteTask(@PathVariable Long id) {
+        TaskResponse patchedTask = taskService.incompleteTask(id);
+        return ResponseEntity.status(HttpStatus.OK).body(patchedTask);
+    }
 }

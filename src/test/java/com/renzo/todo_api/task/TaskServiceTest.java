@@ -499,4 +499,48 @@ public class TaskServiceTest {
             verify(taskRepository).findById(taskId);
         }
     }
+
+    @Nested
+    class IncompleteTask {
+        @Test
+        void incompleteTask_ExistingTaskId_ReturnsIncompleteTask() {
+            Long taskId = 1L;
+            Task task = Task.builder()
+                    .id(taskId)
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(true)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .createdAt(LocalDateTime.of(2026, 5, 3, 12, 0))
+                    .build();
+            when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+
+            TaskResponse taskResponse = taskService.incompleteTask(taskId);
+
+            assertThat(taskResponse.title()).isEqualTo("Read docs");
+            assertThat(taskResponse.description()).isEqualTo("Spring MVC testing");
+            assertThat(taskResponse.completed()).isFalse();
+            assertThat(taskResponse.priority()).isEqualTo(TaskPriority.HIGH);
+            assertThat(taskResponse.dueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
+            assertThat(taskResponse.createdAt()).isEqualTo(LocalDateTime.of(2026, 5, 3, 12, 0));
+            assertThat(taskResponse.updatedAt()).isNotNull();
+            assertThat(task.getCompleted()).isFalse();
+            assertThat(task.getUpdatedAt()).isEqualTo(taskResponse.updatedAt());
+
+            verify(taskRepository).findById(taskId);
+        }
+
+        @Test
+        void incompleteTask_NonExistingTaskId_ThrowsTaskNotFoundException() {
+            Long taskId = 1L;
+            when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> taskService.incompleteTask(taskId))
+                    .isInstanceOf(TaskNotFound.class)
+                    .hasMessage("Task with id 1 was not found.");
+
+            verify(taskRepository).findById(taskId);
+        }
+    }
 }

@@ -75,4 +75,13 @@ public class TaskService {
         task.setUpdatedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
         return taskMapper.toResponse(task);
     }
+
+    @Transactional
+    public TaskResponse incompleteTask(Long id) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFound(id));
+        task.setCompleted(false);
+        task.setUpdatedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
+        return taskMapper.toResponse(task);
+    }
 }

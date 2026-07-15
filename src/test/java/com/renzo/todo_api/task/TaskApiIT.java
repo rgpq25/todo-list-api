@@ -1003,4 +1003,53 @@ class TaskApiIT {
             assertThat(taskRepository.count()).isZero();
         }
     }
+
+    @Nested
+    class IncompleteTask {
+        @Test
+        void incompleteTask_ExistingTaskId_ReturnsIncompleteTaskAndPersistsChanges() throws Exception {
+            Task savedTask = taskRepository.save(Task.builder()
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(true)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .build());
+            LocalDateTime originalCreatedAt = taskRepository.findById(savedTask.getId()).orElseThrow().getCreatedAt();
+
+            mockMvc.perform(patch("/api/tasks/{id}/incomplete", savedTask.getId())
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(savedTask.getId()))
+                    .andExpect(jsonPath("$.title").value("Read docs"))
+                    .andExpect(jsonPath("$.description").value("Spring MVC testing"))
+                    .andExpect(jsonPath("$.completed").value(false))
+                    .andExpect(jsonPath("$.priority").value("HIGH"))
+                    .andExpect(jsonPath("$.dueDate").value("2026-07-10"))
+                    .andExpect(jsonPath("$.createdAt").value(notNullValue()))
+                    .andExpect(jsonPath("$.updatedAt").value(notNullValue()));
+
+            Task incompleteTask = taskRepository.findById(savedTask.getId()).orElseThrow();
+
+            assertThat(incompleteTask.getCompleted()).isFalse();
+            assertThat(incompleteTask.getCreatedAt()).isEqualTo(originalCreatedAt);
+            assertThat(incompleteTask.getUpdatedAt()).isNotNull();
+        }
+
+        @Test
+        void incompleteTask_NonExistingTaskId_Returns404() throws Exception {
+            Long missingId = 999999L;
+
+            mockMvc.perform(patch("/api/tasks/{id}/incomplete", missingId)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Task not found"))
+                    .andExpect(jsonPath("$.detail").value("Task with id 999999 was not found."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            assertThat(taskRepository.count()).isZero();
+        }
+    }
 }
