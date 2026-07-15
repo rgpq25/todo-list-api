@@ -885,4 +885,33 @@ class TaskControllerTest {
             verify(taskService).incompleteTask(taskToMarkIncompleteId);
         }
     }
+
+    @Nested
+    class DeleteTask {
+        @Test
+        void deleteTask_ExistingTaskId_Returns204() throws Exception {
+            Long taskId = 1L;
+
+            mockMvc.perform(delete("/api/tasks/{id}", taskId))
+                    .andExpect(status().isNoContent())
+                    .andExpect(content().string(""));
+
+            verify(taskService).deleteTask(taskId);
+        }
+
+        @Test
+        void deleteTask_NonExistingTaskId_Returns404() throws Exception {
+            Long taskId = 999L;
+            doThrow(new TaskNotFound(taskId)).when(taskService).deleteTask(taskId);
+
+            mockMvc.perform(delete("/api/tasks/{id}", taskId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Task not found"))
+                    .andExpect(jsonPath("$.detail").value("Task with id 999 was not found."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            verify(taskService).deleteTask(taskId);
+        }
+    }
 }

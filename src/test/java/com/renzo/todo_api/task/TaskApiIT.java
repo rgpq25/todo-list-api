@@ -1052,4 +1052,68 @@ class TaskApiIT {
             assertThat(taskRepository.count()).isZero();
         }
     }
+
+    @Nested
+    class DeleteTask {
+        @Test
+        void deleteTask_ExistingTaskId_DeletesOnlyRequestedTask() throws Exception {
+            Task taskToDelete = taskRepository.save(Task.builder()
+                    .title("Delete me")
+                    .completed(false)
+                    .build());
+            Task taskToKeep = taskRepository.save(Task.builder()
+                    .title("Keep me")
+                    .completed(false)
+                    .build());
+
+            mockMvc.perform(delete("/api/tasks/{id}", taskToDelete.getId()))
+                    .andExpect(status().isNoContent())
+                    .andExpect(content().string(""));
+
+            assertThat(taskRepository.findById(taskToDelete.getId())).isEmpty();
+            assertThat(taskRepository.findById(taskToKeep.getId())).isPresent();
+            assertThat(taskRepository.count()).isEqualTo(1);
+
+            mockMvc.perform(get("/api/tasks/{id}", taskToDelete.getId()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.title").value("Task not found"));
+
+            mockMvc.perform(get("/api/tasks"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$", hasSize(1)))
+                    .andExpect(jsonPath("$[0].id").value(taskToKeep.getId()))
+                    .andExpect(jsonPath("$[0].title").value("Keep me"));
+        }
+
+        @Test
+        void deleteTask_NonExistingTaskId_Returns404() throws Exception {
+            Long missingId = 999999L;
+
+            mockMvc.perform(delete("/api/tasks/{id}", missingId))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Task not found"))
+                    .andExpect(jsonPath("$.detail").value("Task with id 999999 was not found."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            assertThat(taskRepository.count()).isZero();
+        }
+
+        @Test
+        void deleteTask_AlreadyDeletedTask_Returns404() throws Exception {
+            Task task = taskRepository.save(Task.builder()
+                    .title("Delete me")
+                    .completed(false)
+                    .build());
+
+            mockMvc.perform(delete("/api/tasks/{id}", task.getId()))
+                    .andExpect(status().isNoContent());
+
+            mockMvc.perform(delete("/api/tasks/{id}", task.getId()))
+                    .andExpect(status().isNotFound())
+                    .andExpect(jsonPath("$.title").value("Task not found"));
+
+            assertThat(taskRepository.count()).isZero();
+        }
+    }
 }

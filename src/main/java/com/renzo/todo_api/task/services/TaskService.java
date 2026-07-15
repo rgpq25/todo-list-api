@@ -84,4 +84,11 @@ public class TaskService {
         task.setUpdatedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
         return taskMapper.toResponse(task);
     }
+
+    @Transactional
+    public void deleteTask(Long id) {
+        Task task = taskRepository.findById(id)
+                .orElseThrow(() -> new TaskNotFound(id));
+        taskRepository.delete(task);
+    }
 }

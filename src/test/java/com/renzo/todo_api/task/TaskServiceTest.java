@@ -543,4 +543,37 @@ public class TaskServiceTest {
             verify(taskRepository).findById(taskId);
         }
     }
+
+    @Nested
+    class DeleteTask {
+        @Test
+        void deleteTask_ExistingTaskId_DeletesTask() {
+            Long taskId = 1L;
+            Task task = Task.builder()
+                    .id(taskId)
+                    .title("Read docs")
+                    .completed(false)
+                    .createdAt(LocalDateTime.of(2026, 5, 3, 12, 0))
+                    .build();
+            when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+
+            taskService.deleteTask(taskId);
+
+            verify(taskRepository).findById(taskId);
+            verify(taskRepository).delete(task);
+        }
+
+        @Test
+        void deleteTask_NonExistingTaskId_ThrowsTaskNotFoundException() {
+            Long taskId = 999L;
+            when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> taskService.deleteTask(taskId))
+                    .isInstanceOf(TaskNotFound.class)
+                    .hasMessage("Task with id 999 was not found.");
+
+            verify(taskRepository).findById(taskId);
+            verify(taskRepository, never()).delete(any(Task.class));
+        }
+    }
 }

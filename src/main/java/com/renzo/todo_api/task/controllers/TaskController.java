@@ -70,4 +70,10 @@ public class TaskController {
         TaskResponse patchedTask = taskService.incompleteTask(id);
         return ResponseEntity.status(HttpStatus.OK).body(patchedTask);
     }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<TaskResponse> deleteTask(@PathVariable Long id) {
+        taskService.deleteTask(id);
+        return ResponseEntity.status(HttpStatus.NO_CONTENT).build();
+    }
 }
