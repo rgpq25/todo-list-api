@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Optional;
 
@@ -53,7 +54,7 @@ public class TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFound(id));
         taskMapper.updateEntity(task, taskDto);
-        task.setUpdatedAt(LocalDateTime.now());
+        task.setUpdatedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
         return taskMapper.toResponse(task);
     }
 
@@ -62,7 +63,7 @@ public class TaskService {
         Task task = taskRepository.findById(id)
                 .orElseThrow(() -> new TaskNotFound(id));
         taskMapper.patchEntity(task, taskDto);
-        task.setUpdatedAt(LocalDateTime.now());
+        task.setUpdatedAt(LocalDateTime.now().truncatedTo(ChronoUnit.MILLIS));
         return taskMapper.toResponse(task);
     }
 }
