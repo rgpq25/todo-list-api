@@ -29,6 +29,11 @@ The application must allow a client to:
 
 The application must store tasks so they can be retrieved after they are created.
 
+### Development Seed Data
+
+When started with the `dev` Spring profile, the application generates 12 random tasks at startup. This is intended for
+manual API testing; use `GET /api/tasks` to find an ID before testing `PATCH`, `PUT`, or `DELETE`.
+
 ---
 
 ## Required Resource
