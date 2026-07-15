@@ -455,4 +455,48 @@ public class TaskServiceTest {
             verifyNoMoreInteractions(taskRepository);
         }
     }
+
+    @Nested
+    class CompleteTask {
+        @Test
+        void completeTask_ExistingTaskId_ReturnsCompletedTask() {
+            Long taskId = 1L;
+            Task task = Task.builder()
+                    .id(taskId)
+                    .title("Read docs")
+                    .description("Spring MVC testing")
+                    .completed(false)
+                    .priority(TaskPriority.HIGH)
+                    .dueDate(LocalDate.of(2026, 7, 10))
+                    .createdAt(LocalDateTime.of(2026, 5, 3, 12, 0))
+                    .build();
+            when(taskRepository.findById(taskId)).thenReturn(Optional.of(task));
+
+            TaskResponse taskResponse = taskService.completeTask(taskId);
+
+            assertThat(taskResponse.title()).isEqualTo("Read docs");
+            assertThat(taskResponse.description()).isEqualTo("Spring MVC testing");
+            assertThat(taskResponse.completed()).isTrue();
+            assertThat(taskResponse.priority()).isEqualTo(TaskPriority.HIGH);
+            assertThat(taskResponse.dueDate()).isEqualTo(LocalDate.of(2026, 7, 10));
+            assertThat(taskResponse.createdAt()).isEqualTo(LocalDateTime.of(2026, 5, 3, 12, 0));
+            assertThat(taskResponse.updatedAt()).isNotNull();
+            assertThat(task.getCompleted()).isTrue();
+            assertThat(task.getUpdatedAt()).isEqualTo(taskResponse.updatedAt());
+
+            verify(taskRepository).findById(taskId);
+        }
+
+        @Test
+        void completeTask_NonExistingTaskId_ThrowsTaskNotFoundException() {
+            Long taskId = 1L;
+            when(taskRepository.findById(taskId)).thenReturn(Optional.empty());
+
+            assertThatThrownBy(() -> taskService.completeTask(taskId))
+                    .isInstanceOf(TaskNotFound.class)
+                    .hasMessage("Task with id 1 was not found.");
+
+            verify(taskRepository).findById(taskId);
+        }
+    }
 }

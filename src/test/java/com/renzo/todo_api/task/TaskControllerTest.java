@@ -1,8 +1,8 @@
 package com.renzo.todo_api.task;
 
 import com.renzo.todo_api.task.controllers.TaskController;
-import com.renzo.todo_api.task.dto.TaskPatchRequest;
 import com.renzo.todo_api.task.dto.TaskCreateRequest;
+import com.renzo.todo_api.task.dto.TaskPatchRequest;
 import com.renzo.todo_api.task.dto.TaskResponse;
 import com.renzo.todo_api.task.dto.TaskUpdateRequest;
 import com.renzo.todo_api.task.exceptions.TaskNotFound;
@@ -24,9 +24,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.*;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -786,6 +785,55 @@ class TaskControllerTest {
                     .andExpect(jsonPath("$.errors", hasSize(0)));
 
             verifyNoInteractions(taskService);
+        }
+    }
+
+    @Nested
+    class CompleteTask {
+        @Test
+        void completeTask_ExistingTaskId_Returns200() throws Exception {
+            Long taskToCompleteId = 1L;
+            TaskResponse taskResponse = new TaskResponse(
+                    taskToCompleteId,
+                    "The title",
+                    "The description",
+                    true,
+                    TaskPriority.HIGH,
+                    null,
+                    LocalDateTime.of(2026, 6, 1, 12, 0),
+                    LocalDateTime.of(2026, 6, 1, 12, 30)
+            );
+            when(taskService.completeTask(taskToCompleteId)).thenReturn(taskResponse);
+
+            mockMvc.perform(patch("/api/tasks/{id}/complete", taskToCompleteId)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isOk())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.id").value(taskToCompleteId))
+                    .andExpect(jsonPath("$.title").value("The title"))
+                    .andExpect(jsonPath("$.description").value("The description"))
+                    .andExpect(jsonPath("$.completed").value(true))
+                    .andExpect(jsonPath("$.priority").value("HIGH"))
+                    .andExpect(jsonPath("$.dueDate").value(nullValue()))
+                    .andExpect(jsonPath("$.updatedAt").value(notNullValue()));
+
+            verify(taskService).completeTask(taskToCompleteId);
+        }
+
+        @Test
+        void completeTask_NonExistingTaskId_Returns404() throws Exception {
+            Long taskToCompleteId = 999L;
+            when(taskService.completeTask(taskToCompleteId)).thenThrow(new TaskNotFound(taskToCompleteId));
+
+            mockMvc.perform(patch("/api/tasks/{id}/complete", taskToCompleteId)
+                            .contentType(MediaType.APPLICATION_JSON))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Task not found"))
+                    .andExpect(jsonPath("$.detail").value("Task with id 999 was not found."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+
+            verify(taskService).completeTask(taskToCompleteId);
         }
     }
 }
