@@ -53,7 +53,7 @@ A task must contain the following information:
 | `priority`    |       No | Importance level of the task            |
 | `dueDate`     |       No | Date the task should be completed by    |
 | `createdAt`   |      Yes | Date and time the task was created      |
-| `updatedAt`   |      Yes | Date and time the task was last changed |
+| `updatedAt`   |      Yes | Date and time the task was last changed; `null` until the task is first changed |
 
 ### Task Priority Values
 
@@ -106,8 +106,8 @@ Creates a new task.
 201 Created
 ```
 
-The response should include the created task, including its generated ID, completion status, creation timestamp, and
-update timestamp.
+The response should include the created task, including its generated ID, completion status, and creation timestamp.
+`updatedAt` is `null` until the task is first changed.
 
 ---
 

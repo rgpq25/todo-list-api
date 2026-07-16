@@ -9,6 +9,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 
@@ -80,6 +82,19 @@ public class GlobalExceptionHandler {
                 .errors(List.of())
                 .build();
         
+        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
+    }
+
+    @ExceptionHandler({NoHandlerFoundException.class, NoResourceFoundException.class})
+    public ResponseEntity<ErrorResponse> handleMissingEndpoint(Exception e) {
+        log.error(e.getMessage(), e);
+
+        ErrorResponse errorResponse = ErrorResponse.builder()
+                .title("Endpoint not found")
+                .detail("The requested endpoint does not exist.")
+                .errors(List.of())
+                .build();
+
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(errorResponse);
     }
 

@@ -182,6 +182,16 @@ class TaskControllerTest {
     @Nested
     class GetTaskByIdTests {
         @Test
+        void unknownEndpoint_Returns404ErrorResponse() throws Exception {
+            mockMvc.perform(get("/api/unknown"))
+                    .andExpect(status().isNotFound())
+                    .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                    .andExpect(jsonPath("$.title").value("Endpoint not found"))
+                    .andExpect(jsonPath("$.detail").value("The requested endpoint does not exist."))
+                    .andExpect(jsonPath("$.errors", hasSize(0)));
+        }
+
+        @Test
         void getTaskById_ExistingTaskId_ReturnsTaskResponse() throws Exception {
             TaskResponse taskResponse = new TaskResponse(
                     1L,
